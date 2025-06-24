@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function RequestProposalPage() {
   const router = useRouter()
-  const { deals, addProposal } = useStore()
+  const addProposal = useStore((state) => state.addProposal)
+  const userId = useStore((state) => state.userId)
+
+  const [deals, setDeals] = useState<{
+    id: string
+    name: string
+    company: string
+  }[]>([])
+  const [dealsLoading, setDealsLoading] = useState(false)
+  const [dealsError, setDealsError] = useState<string | null>(null)
 
   const [activeTab, setActiveTab] = useState("context")
   const [isLoading, setIsLoading] = useState(false)
@@ -48,11 +57,40 @@ export default function RequestProposalPage() {
     },
   })
 
+  // Replace with your actual API key
+  const API_KEY = process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY || "API-KEY"
+
+  // --- Servicios search state ---
+  const [serviceSearchTerm, setServiceSearchTerm] = useState("")
+  const [serviceSearchResults, setServiceSearchResults] = useState<{ id: string; name: string }[]>([])
+  const [serviceSearchLoading, setServiceSearchLoading] = useState(false)
+  const [serviceSearchError, setServiceSearchError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!userId) return
+    setDealsLoading(true)
+    setDealsError(null)
+    fetch(`https://brinca3.pipedrive.com/api/v2/deals?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&owner_id=${userId}&sort_by=add_time&sort_direction=desc`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("No se pudieron obtener los tratos")
+        const data = await res.json()
+        // Map to expected shape
+        const deals = (data.data || []).map((deal: any) => ({
+          id: String(deal.id),
+          name: deal.title,
+          company: deal.org_id || "Sin compañía",
+        }))
+        setDeals(deals)
+      })
+      .catch((err) => setDealsError(err.message))
+      .finally(() => setDealsLoading(false))
+  }, [userId])
+
   const handleTextChange = (section: string, field: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
       [section]: {
-        ...prev[section as keyof typeof prev],
+        ...(prev[section as keyof typeof prev] as Record<string, any>),
         [field]: value,
       },
     }))
@@ -70,7 +108,6 @@ export default function RequestProposalPage() {
 
   const handleDealChange = (dealId: string) => {
     const selectedDeal = deals.find((deal) => deal.id === dealId)
-
     if (selectedDeal) {
       setFormData((prev) => ({
         ...prev,
@@ -104,6 +141,7 @@ export default function RequestProposalPage() {
     try {
       await addProposal({
         ...formData,
+        status: "in_development" as const,
         // budgetStatus se puede manejar internamente o eliminar si ya no es relevante
       })
 
@@ -129,39 +167,28 @@ export default function RequestProposalPage() {
     else if (activeTab === "p&p") setActiveTab("services")
   }
 
-  const possibleServices = [
-    "E - Planificación Estratégica",
-    "E - Pensamiento integrativo para líderes",
-    "E - Acompañamiento para decisiones estratégicas",
-    "E - Research: Estudios B2B",
-    "E - Research: Estudio de tendencias",
-    "E - Research: Estudios CX",
-    "I - Diagnóstico C3: Full",
-    "I - Diagnóstico C3: Gestión de innovación",
-    "I - Diagnóstico C3: C-Level",
-    "I - Campañas de ideas: Nivel Compañía",
-    "I - Campañas de ideas: Focalizada en áreas / talentos",
-    "I - Campañas de ideas: Hackatones",
-    "I - Asesorías de Portafolio",
-    "I - Potenciamiento de proyectos",
-    "I - Gestión del cambio para proyectos estratégicos",
-    "I - Innovación abierta: Scouting rápido",
-    "I - Innovación abierta: Venture client",
-    "I - Innovación 360°",
-    "I - Deep Needfinding y ODI",
-    "CI - Evaluación de cultura de innovación C3",
-    "CI - Campañas de ideas (Cultura)",
-    "CI - Hackatones (Cultura)",
-    "CI - Talleres culturales",
-    "CI - Encuestas culturales",
-    "CI - Experiencias in-situ",
-    "CI - Programas de Embajadores de innovación",
-    "CI - Capacitación en Innovación",
-    "CI - Capacitación en Agilidad",
-    "CI - Capacitación en Metodologías",
-    "C - Programas a medida de transformación cultural",
-    "C - Diseño ad-hoc de modelos de cultura corporativa",
-  ]
+  const handleServiceSearch = async () => {
+    setServiceSearchLoading(true)
+    setServiceSearchError(null)
+    setServiceSearchResults([])
+    try {
+      const res = await fetch(
+        `https://brinca3.pipedrive.com/api/v2/products/search?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&term=${encodeURIComponent(serviceSearchTerm)}`
+      )
+      if (!res.ok) throw new Error("No se pudieron buscar los servicios")
+      const data = await res.json()
+      // Map to expected shape
+      const results = (data.data?.items || []).map((item: any) => ({
+        id: String(item.item.id),
+        name: item.item.name,
+      }))
+      setServiceSearchResults(results)
+    } catch (err: any) {
+      setServiceSearchError(err.message)
+    } finally {
+      setServiceSearchLoading(false)
+    }
+  }
 
   return (
     <ProtectedRoute>
@@ -182,7 +209,11 @@ export default function RequestProposalPage() {
                     <SelectValue placeholder="Selecciona un trato" />
                   </SelectTrigger>
                   <SelectContent>
-                    {deals.length > 0 ? (
+                    {dealsLoading ? (
+                      <SelectItem value="loading" disabled>Cargando tratos...</SelectItem>
+                    ) : dealsError ? (
+                      <SelectItem value="error" disabled>Error: {dealsError}</SelectItem>
+                    ) : deals.length > 0 ? (
                       deals.map((deal) => (
                         <SelectItem key={deal.id} value={deal.id}>
                           {deal.name} - {deal.company}
@@ -196,7 +227,7 @@ export default function RequestProposalPage() {
                   </SelectContent>
                 </Select>
 
-                {deals.length === 0 && (
+                {deals.length === 0 && !dealsLoading && !dealsError && (
                   <p className="text-sm text-amber-600 mt-2">
                     Primero debes crear un trato en la sección "Nuevo Trato"
                   </p>
@@ -244,9 +275,42 @@ export default function RequestProposalPage() {
 
                 <TabsContent value="services" className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Selecciona los servicios que aplican</Label>
-
-                    <div className="border rounded-md p-3 mb-2">
+                    <Label>Buscar servicios</Label>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        className="border rounded px-2 py-1 flex-1"
+                        placeholder="Escribe para buscar servicios..."
+                        value={serviceSearchTerm}
+                        onChange={e => setServiceSearchTerm(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleServiceSearch(); } }}
+                      />
+                      <Button type="button" onClick={handleServiceSearch} disabled={serviceSearchLoading || !serviceSearchTerm}>
+                        Buscar
+                      </Button>
+                    </div>
+                    {serviceSearchLoading && <p className="text-sm text-muted-foreground">Buscando servicios...</p>}
+                    {serviceSearchError && <p className="text-sm text-red-600">{serviceSearchError}</p>}
+                    <div className="border rounded-md p-4 max-h-60 overflow-y-auto shadow-md">
+                      {serviceSearchResults.length > 0 ? (
+                        serviceSearchResults.map((service) => (
+                          <div key={service.id} className="flex items-start space-x-2 py-2">
+                            <Checkbox
+                              id={service.id}
+                              checked={formData.ideas.selectedIdeas.includes(service.name)}
+                              onCheckedChange={() => handleCheckboxChange(service.name)}
+                            />
+                            <Label htmlFor={service.id} className="font-normal">
+                              {service.name}
+                            </Label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No hay servicios para mostrar. Realiza una búsqueda.</p>
+                      )}
+                    </div>
+                    {/* Selected services chips */}
+                    <div className="border rounded-md p-3 mb-2 mt-2">
                       {formData.ideas.selectedIdeas.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {formData.ideas.selectedIdeas.map((service) => (
@@ -283,47 +347,6 @@ export default function RequestProposalPage() {
                         <p className="text-sm text-muted-foreground">No hay servicios seleccionados</p>
                       )}
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full flex justify-between items-center"
-                      onClick={() => setShowServicesDropdown(!showServicesDropdown)}
-                    >
-                      <span>Seleccionar servicios</span>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className={`transition-transform ${showServicesDropdown ? "rotate-180" : ""}`}
-                      >
-                        <path d="m6 9 6 6 6-6"></path>
-                      </svg>
-                    </Button>
-
-                    {showServicesDropdown && (
-                      <div className="border rounded-md p-4 max-h-60 overflow-y-auto shadow-md">
-                        <p className="text-xs text-muted-foreground mb-2">Desplázate para ver todas las opciones</p>
-                        {possibleServices.map((service) => (
-                          <div key={service} className="flex items-start space-x-2 py-2">
-                            <Checkbox
-                              id={service}
-                              checked={formData.ideas.selectedIdeas.includes(service)}
-                              onCheckedChange={() => handleCheckboxChange(service)}
-                            />
-                            <Label htmlFor={service} className="font-normal">
-                              {service}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   <VoiceTextArea

@@ -13,26 +13,38 @@ import { LoadingSuccess } from "@/components/loading-success"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login } = useStore()
+  const { login, setUserId } = useStore()
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [error, setError] = useState("")
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
-    // Simular delay de autenticación
-    setTimeout(() => {
-      setIsLoading(false)
-      setIsSuccess(true)
-
-      // Simular redirección después de login exitoso
-      setTimeout(() => {
+    try {
+      const res = await fetch(
+        `https://brinca3.pipedrive.com/api/v1/users/find?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&search_by_email=1&term=${encodeURIComponent(email)}`
+      )
+      const data = await res.json()
+      if (Array.isArray(data.data) && data.data.length > 0 && data.data[0].id) {
+        setIsLoading(false)
+        setIsSuccess(true)
+        setUserId(data.data[0].id)
         login()
-        router.push("/home")
-      }, 1000)
-    }, 2000)
+        setTimeout(() => {
+          router.push("/home")
+        }, 1000)
+      } else {
+        setIsLoading(false)
+        setError("Usuario no encontrado")
+      }
+    } catch (err) {
+      setIsLoading(false)
+      setError("Error de conexión. Intenta de nuevo.")
+    }
   }
 
   return (
@@ -60,7 +72,9 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={isLoading || isSuccess || !email}>
               Ingresar
             </Button>
-
+            {error && (
+              <div className="text-red-500 text-center text-sm mt-2">{error}</div>
+            )}
             <LoadingSuccess
               isLoading={isLoading}
               isSuccess={isSuccess}

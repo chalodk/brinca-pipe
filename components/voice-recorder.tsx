@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Mic, Square } from "lucide-react"
+import { useState, useRef, useCallback } from "react"
+import { Mic, Square, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -15,38 +15,44 @@ export function VoiceRecorder({ onTranscriptionComplete, className }: VoiceRecor
   const [duration, setDuration] = useState(0)
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null)
   const [isTranscribing, setIsTranscribing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const toggleRecording = () => {
-    if (isRecording) {
-      // Stop recording
-      if (intervalId) {
-        clearInterval(intervalId)
-        setIntervalId(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const startRecording = useCallback(async () => {
+    try {
+      setError(null)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      })
+      
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
       }
 
-      setIsRecording(false)
-
-      // Simulate transcription
-      if (duration > 0) {
-        setIsTranscribing(true)
-
-        setTimeout(() => {
-          setIsTranscribing(false)
-
-          // Generate mock transcription based on duration
-          const mockTranscriptions = [
-            "Necesitamos una propuesta para mejorar el proceso de ventas.",
-            "El cliente busca optimizar su plataforma de e-commerce y aumentar conversiones.",
-            "Requieren una solución integral que incluya análisis de datos y automatización.",
-            "La empresa está interesada en implementar un CRM personalizado para su equipo comercial.",
-          ]
-
-          const transcriptionIndex = Math.floor(Math.random() * mockTranscriptions.length)
-          onTranscriptionComplete(mockTranscriptions[transcriptionIndex])
-        }, 2000)
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        await transcribeAudio(audioBlob)
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop())
       }
-    } else {
-      // Start recording
+
+      mediaRecorder.start()
       setIsRecording(true)
       setDuration(0)
 
@@ -55,13 +61,63 @@ export function VoiceRecorder({ onTranscriptionComplete, className }: VoiceRecor
       }, 1000)
 
       setIntervalId(id)
+    } catch (err) {
+      console.error('Error starting recording:', err)
+      setError('No se pudo acceder al micrófono. Verifica los permisos.')
+    }
+  }, [])
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+    }
+    
+    if (intervalId) {
+      clearInterval(intervalId)
+      setIntervalId(null)
+    }
+    
+    setIsRecording(false)
+  }, [isRecording, intervalId])
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsTranscribing(true)
+    setError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('audio', audioBlob, 'recording.webm')
+
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Error en la transcripción')
+      }
+
+      const data = await response.json()
+      
+      if (data.text) {
+        onTranscriptionComplete(data.text)
+      } else {
+        throw new Error('No se pudo transcribir el audio')
+      }
+    } catch (err) {
+      console.error('Transcription error:', err)
+      setError('Error al transcribir el audio. Intenta de nuevo.')
+    } finally {
+      setIsTranscribing(false)
     }
   }
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording()
+    } else {
+      startRecording()
+    }
   }
 
   return (
@@ -72,18 +128,43 @@ export function VoiceRecorder({ onTranscriptionComplete, className }: VoiceRecor
         size="icon"
         onClick={toggleRecording}
         disabled={isTranscribing}
-        className={cn("transition-all", isRecording && "animate-pulse")}
+        className={cn(
+          "transition-all relative",
+          isRecording && "animate-pulse ring-2 ring-red-500 ring-opacity-50"
+        )}
       >
-        {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        {isTranscribing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isRecording ? (
+          <Square className="h-4 w-4" />
+        ) : (
+          <Mic className="h-4 w-4" />
+        )}
       </Button>
 
-      {isRecording && <span className="text-sm font-medium text-red-500">Grabando... {formatDuration(duration)}</span>}
-
-      {!isRecording && duration > 0 && !isTranscribing && (
-        <span className="text-sm text-muted-foreground">Duración: {formatDuration(duration)}</span>
+      {isRecording && (
+        <span className="text-sm font-medium text-red-500">
+          Grabando... {formatDuration(duration)}
+        </span>
       )}
 
-      {isTranscribing && <span className="text-sm font-medium text-blue-500">Transcribiendo...</span>}
+      {!isRecording && duration > 0 && !isTranscribing && (
+        <span className="text-sm text-muted-foreground">
+          Duración: {formatDuration(duration)}
+        </span>
+      )}
+
+      {isTranscribing && (
+        <span className="text-sm font-medium text-blue-500">
+          Transcribiendo...
+        </span>
+      )}
+
+      {error && (
+        <span className="text-sm font-medium text-red-500">
+          {error}
+        </span>
+      )}
     </div>
   )
 }

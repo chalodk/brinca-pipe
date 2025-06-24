@@ -51,10 +51,13 @@ export type Proposal = {
 
 type State = {
   isAuthenticated: boolean
+  userId: string | null
   deals: Deal[]
   proposals: Proposal[]
   login: () => void
   logout: () => void
+  setUserId: (id: string) => void
+  clearUserId: () => void
   addDeal: (deal: Omit<Deal, "id" | "createdAt">) => Promise<Deal>
   addProposal: (
     proposal: Omit<Proposal, "id" | "createdAt" | "budgetStatus"> & { budgetStatus?: BudgetStatus },
@@ -175,12 +178,17 @@ export const useStore = create<State>()(
   persist(
     (set, get) => ({
       isAuthenticated: false,
+      userId: null,
       deals: mockDeals,
       proposals: mockProposals,
 
       login: () => set({ isAuthenticated: true }),
 
-      logout: () => set({ isAuthenticated: false }),
+      logout: () => set({ isAuthenticated: false, userId: null }),
+
+      setUserId: (id: string) => set({ userId: id }),
+
+      clearUserId: () => set({ userId: null }),
 
       addDeal: async (dealData) => {
         return new Promise((resolve) => {
