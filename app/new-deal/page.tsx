@@ -13,6 +13,12 @@ import { ProtectedRoute } from "@/components/protected-route"
 import { LoadingSuccess } from "@/components/loading-success"
 import { useStore } from "@/store/store"
 
+// At the top of the file, after imports
+const PIPEDRIVE_API_KEY = process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY
+if (!PIPEDRIVE_API_KEY) {
+  throw new Error("Pipedrive API key is not set in environment variables.")
+}
+
 // Type for search results based on the API response structure
 type CompanySearchResult = {
   result_score: number
@@ -85,7 +91,7 @@ export default function NewDealPage() {
       setIsLoadingSources(true)
       try {
         const res = await fetch(
-          "https://brinca3.pipedrive.com/api/v1/dealFields/12505?api_token=7cf5bf6fb1b453ebddc4d4fde6fb89dfc8ef4ccd"
+          "https://brinca3.pipedrive.com/api/v1/dealFields/12505?api_token=" + PIPEDRIVE_API_KEY,
         )
         const data = await res.json()
         if (data.success && data.data && data.data.options) {
@@ -132,7 +138,7 @@ export default function NewDealPage() {
 
     try {
       // REPLACE THIS URL WITH YOUR ACTUAL API ENDPOINT
-      const response = await fetch(`https://brinca3.pipedrive.com/api/v2/organizations/search?api_token=7cf5bf6fb1b453ebddc4d4fde6fb89dfc8ef4ccd&term=${encodeURIComponent(formData.company.trim())}`, {
+      const response = await fetch(`https://brinca3.pipedrive.com/api/v2/organizations/search?api_token=${PIPEDRIVE_API_KEY}&term=${encodeURIComponent(formData.company.trim())}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -176,7 +182,7 @@ export default function NewDealPage() {
 
     try {
       // Build the API URL with organization_id if available
-      let url = `https://brinca3.pipedrive.com/api/v2/persons/search?api_token=7cf5bf6fb1b453ebddc4d4fde6fb89dfc8ef4ccd&term=${encodeURIComponent(formData.contact.trim())}`
+      let url = `https://brinca3.pipedrive.com/api/v2/persons/search?api_token=${PIPEDRIVE_API_KEY}&term=${encodeURIComponent(formData.contact.trim())}`
       if (selectedCompanyId) {
         url += `&organization_id=${selectedCompanyId}`
       }
@@ -239,7 +245,7 @@ export default function NewDealPage() {
         ...(selectedCompanyId ? { org_id: selectedCompanyId } : {}),
         // Add other fields as needed
       }
-      const response = await fetch(`https://brinca3.pipedrive.com/api/v2/persons?api_token=7cf5bf6fb1b453ebddc4d4fde6fb89dfc8ef4ccd`, {
+      const response = await fetch(`https://brinca3.pipedrive.com/api/v2/persons?api_token=${PIPEDRIVE_API_KEY}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -310,7 +316,7 @@ export default function NewDealPage() {
       }
 
       const dealRes = await fetch(
-        "https://brinca3.pipedrive.com/api/v2/deals?api_token=7cf5bf6fb1b453ebddc4d4fde6fb89dfc8ef4ccd",
+        "https://brinca3.pipedrive.com/api/v2/deals?api_token=" + PIPEDRIVE_API_KEY,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -336,7 +342,7 @@ export default function NewDealPage() {
           ...(formData.email ? { emails: [{"value":formData.email}] } : {}),
         }
         const patchRes = await fetch(
-          `https://brinca3.pipedrive.com/api/v2/persons/${selectedContactId}?api_token=7cf5bf6fb1b453ebddc4d4fde6fb89dfc8ef4ccd`,
+          `https://brinca3.pipedrive.com/api/v2/persons/${selectedContactId}?api_token=${PIPEDRIVE_API_KEY}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
