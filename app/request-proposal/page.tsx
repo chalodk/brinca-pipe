@@ -145,6 +145,78 @@ export default function RequestProposalPage() {
         // budgetStatus se puede manejar internamente o eliminar si ya no es relevante
       })
 
+      // --- CONTEXTO NOTE ---
+      const noteContentContexto = [
+        `Contexto del negocio:\n${formData.context.businessContext}`,
+        `Necesidades del cliente:\n${formData.context.clientNeeds}`,
+        `Resultados esperados:\n${formData.context.expectedResults}`,
+      ].join("\n\n")
+
+      if (formData.dealId && noteContentContexto.trim()) {
+        await fetch(`https://brinca3.pipedrive.com/api/v1/notes?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              content: noteContentContexto,
+              deal_id: formData.dealId,
+            }),
+          }
+        )
+      }
+
+      // --- SERVICIOS NOTE ---
+      const noteContentServicios = [
+        `Servicios adicionales:\n${formData.ideas.additionalIdeas}`,
+        `Ideas de implementación de servicios:\n${formData.ideas.implementationIdeas}`,
+      ].join("\n\n")
+
+      if (formData.dealId && noteContentServicios.trim()) {
+        await fetch(`https://brinca3.pipedrive.com/api/v1/notes?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              content: noteContentServicios,
+              deal_id: formData.dealId,
+            }),
+          }
+        )
+      }
+
+      // --- ADD PRODUCTS TO DEAL ---
+      for (const productName of formData.ideas.selectedIdeas) {
+        // Find the product ID from the last search results
+        const product = serviceSearchResults.find(p => p.name === productName)
+        if (product && formData.dealId) {
+          await fetch(`https://brinca3.pipedrive.com/api/v2/deals/${formData.dealId}/products?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                product_id: product.id,
+                item_price: 1,
+                quantity: 1,
+              }),
+            }
+          )
+        }
+      }
+
+      // --- UPDATE DEAL VALUE & PROBABILITY ---
+      if (formData.dealId && (formData.pAndP.estimatedValue !== null || formData.pAndP.probability !== null)) {
+        const updateBody: Record<string, any> = {}
+        if (formData.pAndP.estimatedValue !== null) updateBody.value = formData.pAndP.estimatedValue
+        if (formData.pAndP.probability !== null) updateBody.probability = formData.pAndP.probability
+        await fetch(`https://brinca3.pipedrive.com/api/v2/deals/${formData.dealId}?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updateBody),
+          }
+        )
+      }
+
       setIsSuccess(true)
 
       setTimeout(() => {
