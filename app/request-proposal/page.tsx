@@ -145,39 +145,24 @@ export default function RequestProposalPage() {
         // budgetStatus se puede manejar internamente o eliminar si ya no es relevante
       })
 
-      // --- CONTEXTO NOTE ---
-      const noteContentContexto = [
+      // --- SINGLE NOTE WITH ALL FIELDS ---
+      const noteContent = [
         `Contexto del negocio:\n${formData.context.businessContext}`,
         `Necesidades del cliente:\n${formData.context.clientNeeds}`,
         `Resultados esperados:\n${formData.context.expectedResults}`,
-      ].join("\n\n")
-
-      if (formData.dealId && noteContentContexto.trim()) {
-        await fetch(`https://brinca3.pipedrive.com/api/v1/notes?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              content: noteContentContexto,
-              deal_id: formData.dealId,
-            }),
-          }
-        )
-      }
-
-      // --- SERVICIOS NOTE ---
-      const noteContentServicios = [
         `Servicios adicionales:\n${formData.ideas.additionalIdeas}`,
         `Ideas de implementación de servicios:\n${formData.ideas.implementationIdeas}`,
+        `¿Este es un cliente de alto potencial? ${formData.pAndP.potential}`,
+        `¿Cuál es la fecha óptima de entrega de propuesta? ${formData.pAndP.optimalDeliveryDate || 'No especificada'}`,
       ].join("\n\n")
 
-      if (formData.dealId && noteContentServicios.trim()) {
+      if (formData.dealId && noteContent.trim()) {
         await fetch(`https://brinca3.pipedrive.com/api/v1/notes?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              content: noteContentServicios,
+              content: noteContent,
               deal_id: formData.dealId,
             }),
           }
@@ -205,7 +190,9 @@ export default function RequestProposalPage() {
 
       // --- UPDATE DEAL VALUE & PROBABILITY ---
       if (formData.dealId && (formData.pAndP.estimatedValue !== null || formData.pAndP.probability !== null)) {
-        const updateBody: Record<string, any> = {}
+        const updateBody: Record<string, any> = {
+          stage_id: 6
+        }
         if (formData.pAndP.estimatedValue !== null) updateBody.value = formData.pAndP.estimatedValue
         if (formData.pAndP.probability !== null) updateBody.probability = formData.pAndP.probability
         await fetch(`https://brinca3.pipedrive.com/api/v2/deals/${formData.dealId}?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
