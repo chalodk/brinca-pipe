@@ -12,7 +12,7 @@ import type { Proposal } from "@/store/store"
 
 export default function ProposalStatusPage() {
   const router = useRouter()
-  const { proposals } = useStore()
+  const { proposals, userId } = useStore()
   const [activeTab, setActiveTab] = useState("in_development_tab")
   const [selectedProposalForReview, setSelectedProposalForReview] = useState<Proposal | null>(null)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
@@ -25,13 +25,18 @@ export default function ProposalStatusPage() {
   const dealsPerPage = 5
 
   const fetchDeals = async () => {
+    if (!userId) {
+      setDealsError("No se pudo obtener el ID del usuario")
+      return
+    }
+    
     setDealsLoading(true)
     setDealsError(null)
     try {
       const res = await fetch("/api/pipedrive/search-deal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sort_by: "add_time", sort_direction: "desc", status: "open", stage_id: 6 }),
+        body: JSON.stringify({ sort_by: "add_time", sort_direction: "desc", status: "open", stage_id: 6, owner_id: userId }),
       })
       if (!res.ok) throw new Error("No se pudieron obtener los tratos")
       const data = await res.json()
