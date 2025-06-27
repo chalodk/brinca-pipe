@@ -8,7 +8,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Deal ID is required' }, { status: 400 })
     }
     const body = await request.json()
-    const apiKey = process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY
+    const apiKey = process.env.PIPEDRIVE_API_KEY
     if (!apiKey) {
       return NextResponse.json({ error: 'Pipedrive API key not set' }, { status: 500 })
     }

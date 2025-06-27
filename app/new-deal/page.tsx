@@ -13,12 +13,6 @@ import { ProtectedRoute } from "@/components/protected-route"
 import { LoadingSuccess } from "@/components/loading-success"
 import { useStore } from "@/store/store"
 
-// At the top of the file, after imports
-const PIPEDRIVE_API_KEY = process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY
-if (!PIPEDRIVE_API_KEY) {
-  throw new Error("Pipedrive API key is not set in environment variables.")
-}
-
 // Type for search results based on the API response structure
 type CompanySearchResult = {
   result_score: number

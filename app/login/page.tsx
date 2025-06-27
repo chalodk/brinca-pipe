@@ -25,9 +25,11 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const res = await fetch(
-        `https://brinca3.pipedrive.com/api/v1/users/find?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&search_by_email=1&term=${encodeURIComponent(email)}`
-      )
+      const res = await fetch("/api/pipedrive/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
       const data = await res.json()
       if (Array.isArray(data.data) && data.data.length > 0 && data.data[0].id) {
         setIsLoading(false)

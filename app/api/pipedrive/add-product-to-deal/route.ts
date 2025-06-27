@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const { dealId, ...body } = await request.json()
-    const apiKey = process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY
+    console.log("PIPEDRIVE_API_KEY:", process.env.PIPEDRIVE_API_KEY);
+    const apiKey = process.env.PIPEDRIVE_API_KEY
     if (!apiKey) {
       return NextResponse.json({ error: 'Pipedrive API key not set' }, { status: 500 })
     }
