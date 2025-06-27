@@ -91,9 +91,7 @@ export default function NewDealPage() {
     const fetchSources = async () => {
       setIsLoadingSources(true)
       try {
-        const res = await fetch(
-          "https://brinca3.pipedrive.com/api/v1/dealFields/12505?api_token=" + PIPEDRIVE_API_KEY,
-        )
+        const res = await fetch("/api/pipedrive/deal-fields")
         const data = await res.json()
         if (data.success && data.data && data.data.options) {
           setSourceOptions(data.data.options)
@@ -133,27 +131,18 @@ export default function NewDealPage() {
       alert("Por favor ingresa el nombre de la empresa para buscar")
       return
     }
-
     setIsSearching(true)
     setShowResults(false)
-
     try {
-      // REPLACE THIS URL WITH YOUR ACTUAL API ENDPOINT
-      const response = await fetch(`https://brinca3.pipedrive.com/api/v2/organizations/search?api_token=${PIPEDRIVE_API_KEY}&term=${encodeURIComponent(formData.company.trim())}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch("/api/pipedrive/search-organization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ term: formData.company.trim() }),
       })
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-
       const data = await response.json()
-      console.log("Search results:", data)
-      
-      // Handle the specific API response structure
       if (data.success && data.data && data.data.items) {
         setSearchResults(data.data.items)
         setShowResults(true)
@@ -161,7 +150,6 @@ export default function NewDealPage() {
         setSearchResults([])
         setShowResults(true)
       }
-      
     } catch (error) {
       console.error("Error searching for company:", error)
       alert("Error al buscar la empresa. Por favor intenta de nuevo.")
@@ -177,32 +165,18 @@ export default function NewDealPage() {
       alert("Por favor ingresa el nombre del contacto para buscar")
       return
     }
-
     setIsSearchingContact(true)
     setShowContactResults(false)
-
     try {
-      // Build the API URL with organization_id if available
-      let url = `https://brinca3.pipedrive.com/api/v2/persons/search?api_token=${PIPEDRIVE_API_KEY}&term=${encodeURIComponent(formData.contact.trim())}`
-      if (selectedCompanyId) {
-        url += `&organization_id=${selectedCompanyId}`
-      }
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch("/api/pipedrive/search-contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ term: formData.contact.trim(), organization_id: selectedCompanyId }),
       })
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-
       const data = await response.json()
-      console.log("Contact search results:", data)
-      
-      // Handle the specific API response structure
       if (data.success && data.data && data.data.items && data.data.items.length > 0) {
         setContactSearchResults(data.data.items)
         setShowContactResults(true)
@@ -210,14 +184,13 @@ export default function NewDealPage() {
       } else {
         setContactSearchResults([])
         setShowContactResults(true)
-        setIsCreatingContact(true) // Enable create mode when no results
+        setIsCreatingContact(true)
       }
-      
     } catch (error) {
       console.error("Error searching for contact:", error)
       alert("Error al buscar el contacto. Por favor intenta de nuevo.")
       setContactSearchResults([])
-      setIsCreatingContact(true) // Enable create mode on error
+      setIsCreatingContact(true)
     } finally {
       setIsSearchingContact(false)
     }
@@ -236,37 +209,26 @@ export default function NewDealPage() {
       alert("Por favor ingresa el nombre del contacto")
       return
     }
-
     setIsSearchingContact(true)
-
     try {
-      // Build the body with org_id if available
       const body = {
         name: formData.contact.trim(),
         ...(selectedCompanyId ? { org_id: selectedCompanyId } : {}),
-        // Add other fields as needed
       }
-      const response = await fetch(`https://brinca3.pipedrive.com/api/v2/persons?api_token=${PIPEDRIVE_API_KEY}`, {
+      const response = await fetch("/api/pipedrive/create-contact", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-
       const data = await response.json()
-      console.log("Contact created:", data)
-      
       if (data.success && data.data) {
         setSelectedContactId(data.data.id)
         alert(`Contacto "${formData.contact}" creado exitosamente`)
-        setIsCreatingContact(false) // Reset to search mode after successful creation
+        setIsCreatingContact(false)
       }
-      
     } catch (error) {
       console.error("Error creating contact:", error)
       alert("Error al crear el contacto. Por favor intenta de nuevo.")
@@ -300,69 +262,51 @@ export default function NewDealPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!userId) {
       alert("No se pudo obtener el ID del usuario. Por favor, inicia sesión nuevamente.")
       return
     }
-
     setIsLoading(true)
-
     try {
-      // 1. Create the deal
       const dealPayload = {
         title: formData.name,
         org_id: selectedCompanyId,
-        owner_id: userId, // Use logged-in user's ID.
+        owner_id: userId,
         person_id: selectedContactId,
         channel: formData.source ? Number(formData.source) : undefined,
         custom_fields: {
           "87b9669f62217dd75a5b8258da696fc3f76a9488": formData.profitCenter ? [Number(formData.profitCenter)] : [],
         },
       }
-
-      const dealRes = await fetch(
-        "https://brinca3.pipedrive.com/api/v2/deals?api_token=" + PIPEDRIVE_API_KEY,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(dealPayload),
-        }
-      )
-
+      const dealRes = await fetch("/api/pipedrive/create-deal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dealPayload),
+      })
       if (!dealRes.ok) {
         throw new Error("Error al crear el trato en Pipedrive")
       }
-
       const dealData = await dealRes.json()
       if (!dealData.success) {
         throw new Error("La API de Pipedrive no devolvió éxito al crear el trato")
       }
-
-      // 2. Update the contact's 'Cargo' field
       if (selectedContactId && formData.position) {
         const patchPayload = {
-          "custom_fields": {
-          "ecd931671516f7fc647c532935109b7968d22c5f": formData.position
+          custom_fields: {
+            "ecd931671516f7fc647c532935109b7968d22c5f": formData.position,
           },
-          ...(formData.email ? { emails: [{"value":formData.email}] } : {}),
+          ...(formData.email ? { emails: [{ value: formData.email }] } : {}),
         }
-        const patchRes = await fetch(
-          `https://brinca3.pipedrive.com/api/v2/persons/${selectedContactId}?api_token=${PIPEDRIVE_API_KEY}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(patchPayload),
-          }
-        )
+        const patchRes = await fetch(`/api/pipedrive/update-contact?id=${selectedContactId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patchPayload),
+        })
         if (!patchRes.ok) {
           throw new Error("Error al actualizar el cargo del contacto en Pipedrive")
         }
       }
-
       setIsSuccess(true)
-
-      // Redireccionar después de éxito
       setTimeout(() => {
         router.push("/home")
       }, 2000)

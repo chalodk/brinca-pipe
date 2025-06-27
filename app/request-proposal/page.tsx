@@ -70,7 +70,11 @@ export default function RequestProposalPage() {
     if (!userId) return
     setDealsLoading(true)
     setDealsError(null)
-    fetch(`https://brinca3.pipedrive.com/api/v2/deals?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&owner_id=${userId}&sort_by=add_time&sort_direction=desc&status=open`)
+    fetch("/api/pipedrive/search-deal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ owner_id: userId, sort_by: "add_time", sort_direction: "desc", status: "open" }),
+    })
       .then(async (res) => {
         if (!res.ok) throw new Error("No se pudieron obtener los tratos")
         const data = await res.json()
@@ -157,38 +161,23 @@ export default function RequestProposalPage() {
       ].join("\n\n")
 
       if (formData.dealId && noteContent.trim()) {
-        await fetch(`https://brinca3.pipedrive.com/api/v1/notes?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              content: noteContent,
-              deal_id: formData.dealId,
-            }),
-          }
-        )
+        await fetch("/api/pipedrive/create-note", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: noteContent, deal_id: formData.dealId }),
+        })
       }
 
       // --- ADD PRODUCTS TO DEAL ---
       for (const productName of formData.ideas.selectedIdeas) {
-        // Find the product ID from the last search results
         const product = serviceSearchResults.find(p => p.name === productName)
         if (product && formData.dealId) {
           const productIdInt = parseInt(product.id, 10)
-          console.log('Adding product to deal:', { productId: productIdInt, dealId: formData.dealId })
-          const res = await fetch(`https://brinca3.pipedrive.com/api/v2/deals/${formData.dealId}/products?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                product_id: productIdInt,
-                item_price: 1,
-                quantity: 1,
-              }),
-            }
-          )
-          const resJson = await res.json()
-          console.log('Pipedrive add product response:', res.status, resJson)
+          await fetch("/api/pipedrive/add-product-to-deal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dealId: formData.dealId, product_id: productIdInt, item_price: 1, quantity: 1 }),
+          })
         }
       }
 
@@ -199,13 +188,11 @@ export default function RequestProposalPage() {
         }
         if (formData.pAndP.estimatedValue !== null) updateBody.value = formData.pAndP.estimatedValue
         if (formData.pAndP.probability !== null) updateBody.probability = formData.pAndP.probability
-        await fetch(`https://brinca3.pipedrive.com/api/v2/deals/${formData.dealId}?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updateBody),
-          }
-        )
+        await fetch(`/api/pipedrive/update-deal?id=${formData.dealId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updateBody),
+        })
       }
 
       setIsSuccess(true)
@@ -235,12 +222,13 @@ export default function RequestProposalPage() {
     setServiceSearchError(null)
     setServiceSearchResults([])
     try {
-      const res = await fetch(
-        `https://brinca3.pipedrive.com/api/v2/products/search?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&term=${encodeURIComponent(serviceSearchTerm)}`
-      )
+      const res = await fetch("/api/pipedrive/search-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ term: serviceSearchTerm }),
+      })
       if (!res.ok) throw new Error("No se pudieron buscar los servicios")
       const data = await res.json()
-      // Map to expected shape
       const results = (data.data?.items || []).map((item: any) => ({
         id: String(item.item.id),
         name: item.item.name,

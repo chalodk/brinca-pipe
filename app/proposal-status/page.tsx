@@ -28,9 +28,11 @@ export default function ProposalStatusPage() {
     setDealsLoading(true)
     setDealsError(null)
     try {
-      const res = await fetch(
-        `https://brinca3.pipedrive.com/api/v2/deals?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&sort_by=add_time&sort_direction=desc&status=open`
-      )
+      const res = await fetch("/api/pipedrive/search-deal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sort_by: "add_time", sort_direction: "desc", status: "open", stage_id: 6 }),
+      })
       if (!res.ok) throw new Error("No se pudieron obtener los tratos")
       const data = await res.json()
       setApiDeals(data.data || [])
@@ -82,67 +84,54 @@ export default function ProposalStatusPage() {
             <CardDescription>Revisa el estado de tus propuestas solicitadas</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* --- Fetch Deals Button and Pagination --- */}
-            <div className="mb-6">
-              <Button onClick={fetchDeals} disabled={dealsLoading}>
-                {dealsLoading ? "Cargando tratos..." : "Obtener tratos de Pipedrive"}
-              </Button>
-              {dealsError && <p className="text-red-600 mt-2">{dealsError}</p>}
-              {apiDeals.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-semibold mb-2">Tratos (paginados de 5):</h4>
-                  {paginatedDeals.map((deal) => (
-                    <div key={deal.id} className="border rounded p-3 mb-2 flex items-center justify-between">
-                      <span>{deal.title}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => window.open(`https://brinca3.pipedrive.com/deal/${deal.id}`, "_blank")}
-                      >
-                        Ir al trato
-                      </Button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2 mt-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    >
-                      Anterior
-                    </Button>
-                    <span className="self-center">Página {currentPage} de {totalPages}</span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    >
-                      Siguiente
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* --- End --- */}
-
+            <Button onClick={fetchDeals} disabled={dealsLoading} className="mb-6">
+              {dealsLoading ? "Cargando tratos..." : "Obtener tratos de Pipedrive"}
+            </Button>
+            {dealsError && <p className="text-red-600 mt-2">{dealsError}</p>}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid grid-cols-2 mb-4">
                 <TabsTrigger value="in_development_tab">En Desarrollo</TabsTrigger>
                 <TabsTrigger value="in_review_tab">En Revisión</TabsTrigger>
               </TabsList>
-
               <TabsContent value="in_development_tab">
-                {inDevelopmentProposals.length > 0 ? (
-                  inDevelopmentProposals.map((proposal) => (
-                    <ProposalCard key={proposal.id} proposal={proposal} showRequestedDate />
-                  ))
+                {paginatedDeals.length > 0 ? (
+                  <>
+                    {paginatedDeals.map((deal) => (
+                      <div key={deal.id} className="border rounded p-3 mb-2 flex items-center justify-between">
+                        <span>{deal.title}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(`https://brinca3.pipedrive.com/deal/${deal.id}`, "_blank")}
+                        >
+                          Ir al trato
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      >
+                        Anterior
+                      </Button>
+                      <span className="self-center">Página {currentPage} de {totalPages}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      >
+                        Siguiente
+                      </Button>
+                    </div>
+                  </>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">No hay propuestas en desarrollo.</div>
+                  <div className="text-center py-8 text-muted-foreground">No hay tratos en desarrollo.</div>
                 )}
               </TabsContent>
-
               <TabsContent value="in_review_tab">
                 {inReviewProposals.length > 0 ? (
                   inReviewProposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} />)
@@ -154,7 +143,6 @@ export default function ProposalStatusPage() {
           </CardContent>
         </Card>
       </div>
-
       {selectedProposalForReview && (
         <ReviewProposalModal
           proposal={selectedProposalForReview}
