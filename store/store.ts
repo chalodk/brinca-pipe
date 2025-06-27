@@ -78,109 +78,13 @@ const getRandomFutureDate = () => {
   return futureDate
 }
 
-const mockDeals: Deal[] = [
-  {
-    id: "deal-1",
-    name: "Transformación digital para Banco Nacional",
-    company: "Banco Nacional",
-    contact: "Carlos Méndez",
-    position: "CIO",
-    profitCenter: "Gestión Tecnológica",
-    source: "Recomendado",
-    createdAt: new Date(2023, 10, 15),
-  },
-  {
-    id: "deal-2",
-    name: "Programa de innovación corporativa",
-    company: "Seguros Pacífico",
-    contact: "María González",
-    position: "Directora de Innovación",
-    profitCenter: "Estrategia, Innovación y Cultura",
-    source: "Evento de relacionamiento",
-    createdAt: new Date(2023, 11, 3),
-  },
-]
-
-const mockProposals: Proposal[] = [
-  {
-    id: "proposal-1",
-    dealId: "deal-1",
-    dealName: "Transformación digital para Banco Nacional",
-    status: "in_development",
-    budgetStatus: "in_review",
-    createdAt: new Date(2023, 10, 18),
-    estimatedDeliveryDate: getRandomFutureDate(),
-    lastAction: {
-      action: "Propuesta iniciada",
-      date: new Date(2023, 10, 18),
-      by: "Ana Martínez",
-    },
-    context: {
-      businessContext:
-        "El banco busca modernizar sus sistemas para mejorar la experiencia del cliente y optimizar procesos internos.",
-      clientNeeds:
-        "Necesitan una estrategia clara de transformación digital que incluya roadmap y priorización de iniciativas.",
-      expectedResults: "Esperan reducir costos operativos en un 20% y mejorar la satisfacción del cliente en un 30%.",
-    },
-    ideas: {
-      selectedIdeas: [
-        "I - Diagnóstico C3: Full",
-        "I - Potenciamiento de proyectos",
-        "I - Gestión del cambio para proyectos estratégicos",
-      ],
-      additionalIdeas: "Consideración especial para la integración con sistemas legacy.",
-      implementationIdeas: "Enfoque por fases, comenzando con áreas de mayor impacto al cliente.",
-    },
-    pAndP: {
-      potential: "high",
-      estimatedValue: 175000,
-      probability: 70,
-      optimalDeliveryDate: "2024-07-15",
-    },
-  },
-  {
-    id: "proposal-2",
-    dealId: "deal-2",
-    dealName: "Programa de innovación corporativa",
-    status: "ready_for_review",
-    budgetStatus: "ready",
-    createdAt: new Date(2023, 11, 10),
-    lastAction: {
-      action: "Lista para revisión",
-      date: new Date(2024, 0, 20),
-      by: "Pedro Sánchez",
-    },
-    context: {
-      businessContext: "La aseguradora busca desarrollar nuevos productos y servicios para mantenerse competitiva.",
-      clientNeeds: "Necesitan un programa estructurado de innovación que involucre a toda la organización.",
-      expectedResults: "Buscan lanzar al menos 3 nuevos productos/servicios en los próximos 12 meses.",
-    },
-    ideas: {
-      selectedIdeas: [
-        "I - Campañas de ideas: Nivel Compañía",
-        "CI - Talleres culturales",
-        "CI - Programas de Embajadores de innovación",
-        "CI - Capacitación en Innovación",
-      ],
-      additionalIdeas: "Incluir un sistema de reconocimiento para los colaboradores más innovadores.",
-      implementationIdeas: "Comenzar con un piloto en el área de productos y luego expandir.",
-    },
-    pAndP: {
-      potential: "medium",
-      estimatedValue: 90000,
-      probability: 85,
-      optimalDeliveryDate: "2024-06-30",
-    },
-  },
-]
-
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
       isAuthenticated: false,
       userId: null,
-      deals: mockDeals,
-      proposals: mockProposals,
+      deals: [],
+      proposals: [],
 
       login: () => set({ isAuthenticated: true }),
 

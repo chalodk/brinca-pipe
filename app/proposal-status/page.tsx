@@ -6,18 +6,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { ProtectedRoute } from "@/components/protected-route"
-import { ReviewProposalModal } from "@/components/review-proposal-modal" // Lo mantenemos por si se usa en otro flujo
+import { ReviewProposalModal } from "@/components/review-proposal-modal"
 import { useStore } from "@/store/store"
-import type { Proposal, Deal } from "@/store/store"
+import type { Proposal } from "@/store/store"
 
 export default function ProposalStatusPage() {
   const router = useRouter()
-  const { proposals, deals } = useStore()
-  const [activeTab, setActiveTab] = useState("in_development_tab") // Cambiado para evitar colisión con estado
+  const { proposals } = useStore()
+  const [activeTab, setActiveTab] = useState("in_development_tab")
   const [selectedProposalForReview, setSelectedProposalForReview] = useState<Proposal | null>(null)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
 
-  // --- New: Deals from API ---
+  // --- Deals from API ---
   const [apiDeals, setApiDeals] = useState<any[]>([])
   const [dealsLoading, setDealsLoading] = useState(false)
   const [dealsError, setDealsError] = useState<string | null>(null)
@@ -46,52 +46,21 @@ export default function ProposalStatusPage() {
   const totalPages = Math.ceil(apiDeals.length / dealsPerPage)
   const paginatedDeals = apiDeals.slice((currentPage - 1) * dealsPerPage, currentPage * dealsPerPage)
 
-  // Filtrar propuestas para cada pestaña
+  // --- Existing proposal logic ---
   const inDevelopmentProposals = proposals.filter(
     (p) => p.status === "in_development" || p.status === "adjustment_pending",
   )
   const inReviewProposals = proposals.filter((p) => p.status === "ready_for_review")
 
-  const getDealById = (dealId: string): Deal | undefined => {
-    return deals.find((deal) => deal.id === dealId)
-  }
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
-  }
-
-  const handleGoToDeal = (dealId: string) => {
-    // Aquí puedes definir a dónde navegar, por ejemplo, a una vista de detalle del trato.
-    // Por ahora, solo un console.log o una ruta placeholder.
-    console.log(`Navegar al trato con ID: ${dealId}`)
-    // router.push(`/deals/${dealId}`); // Descomentar si tienes una ruta de detalle de trato
-  }
-
-  // Esta función podría ser necesaria si el botón "Revisar propuesta" se reintroduce o se usa en otro lugar.
-  const handleReviewClick = (proposal: Proposal) => {
-    setSelectedProposalForReview(proposal)
-    setIsReviewModalOpen(true)
-  }
-
   const ProposalCard = ({ proposal, showRequestedDate }: { proposal: Proposal; showRequestedDate?: boolean }) => {
-    const deal = getDealById(proposal.dealId)
-    const clientName = deal ? deal.company : "Cliente Desconocido"
-
     return (
       <Card className="mb-4">
         <CardContent className="p-4">
           <div className="flex flex-col space-y-3">
             <h3 className="font-medium text-lg">{proposal.dealName}</h3>
-            <p className="text-sm text-muted-foreground">Cliente: {clientName}</p>
-
             {showRequestedDate && (
-              <p className="text-sm text-muted-foreground">Solicitada: {formatDate(proposal.createdAt)}</p>
+              <p className="text-sm text-muted-foreground">Solicitada: {new Date(proposal.createdAt).toLocaleDateString("es-ES")}</p>
             )}
-
             <Button
               onClick={() => window.open(`https://brinca3.pipedrive.com/deal/${proposal.dealId}`, "_blank")}
               className="mt-2 w-full sm:w-auto self-start"
@@ -113,7 +82,7 @@ export default function ProposalStatusPage() {
             <CardDescription>Revisa el estado de tus propuestas solicitadas</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* --- New: Fetch Deals Button and Pagination --- */}
+            {/* --- Fetch Deals Button and Pagination --- */}
             <div className="mb-6">
               <Button onClick={fetchDeals} disabled={dealsLoading}>
                 {dealsLoading ? "Cargando tratos..." : "Obtener tratos de Pipedrive"}
@@ -156,7 +125,7 @@ export default function ProposalStatusPage() {
                 </div>
               )}
             </div>
-            {/* --- End New --- */}
+            {/* --- End --- */}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid grid-cols-2 mb-4">

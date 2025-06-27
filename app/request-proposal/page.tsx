@@ -174,17 +174,21 @@ export default function RequestProposalPage() {
         // Find the product ID from the last search results
         const product = serviceSearchResults.find(p => p.name === productName)
         if (product && formData.dealId) {
-          await fetch(`https://brinca3.pipedrive.com/api/v2/deals/${formData.dealId}/products?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
+          const productIdInt = parseInt(product.id, 10)
+          console.log('Adding product to deal:', { productId: productIdInt, dealId: formData.dealId })
+          const res = await fetch(`https://brinca3.pipedrive.com/api/v2/deals/${formData.dealId}/products?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                product_id: product.id,
+                product_id: productIdInt,
                 item_price: 1,
                 quantity: 1,
               }),
             }
           )
+          const resJson = await res.json()
+          console.log('Pipedrive add product response:', res.status, resJson)
         }
       }
 
