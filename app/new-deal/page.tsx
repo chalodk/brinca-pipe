@@ -313,7 +313,7 @@ export default function NewDealPage() {
       const dealPayload = {
         title: formData.name,
         org_id: selectedCompanyId,
-        owner_id: userId, // Use logged-in user's ID
+        owner_id: userId, // Use logged-in user's ID.
         person_id: selectedContactId,
         channel: formData.source ? Number(formData.source) : undefined,
         custom_fields: {
