@@ -70,7 +70,7 @@ export default function RequestProposalPage() {
     if (!userId) return
     setDealsLoading(true)
     setDealsError(null)
-    fetch(`https://brinca3.pipedrive.com/api/v2/deals?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&owner_id=${userId}&sort_by=add_time&sort_direction=desc`)
+    fetch(`https://brinca3.pipedrive.com/api/v2/deals?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&owner_id=${userId}&sort_by=add_time&sort_direction=desc&status=open`)
       .then(async (res) => {
         if (!res.ok) throw new Error("No se pudieron obtener los tratos")
         const data = await res.json()

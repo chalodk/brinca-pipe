@@ -29,7 +29,7 @@ export default function ProposalStatusPage() {
     setDealsError(null)
     try {
       const res = await fetch(
-        `https://brinca3.pipedrive.com/api/v2/deals?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&sort_by=add_time&sort_direction=desc`
+        `https://brinca3.pipedrive.com/api/v2/deals?api_token=${process.env.NEXT_PUBLIC_PIPEDRIVE_API_KEY}&sort_by=add_time&sort_direction=desc&status=open`
       )
       if (!res.ok) throw new Error("No se pudieron obtener los tratos")
       const data = await res.json()

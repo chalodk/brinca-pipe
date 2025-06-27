@@ -57,6 +57,7 @@ type ContactSearchResult = {
 export default function NewDealPage() {
   const router = useRouter()
   const { addDeal } = useStore()
+  const userId = useStore((state) => state.userId)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -300,6 +301,11 @@ export default function NewDealPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!userId) {
+      alert("No se pudo obtener el ID del usuario. Por favor, inicia sesión nuevamente.")
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -307,7 +313,7 @@ export default function NewDealPage() {
       const dealPayload = {
         title: formData.name,
         org_id: selectedCompanyId,
-        owner_id: 20794237, // Hardcoded for now
+        owner_id: userId, // Use logged-in user's ID
         person_id: selectedContactId,
         channel: formData.source ? Number(formData.source) : undefined,
         custom_fields: {
