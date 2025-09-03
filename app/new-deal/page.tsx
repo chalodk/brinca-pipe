@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ProtectedRoute } from "@/components/protected-route"
 import { LoadingSuccess } from "@/components/loading-success"
 import { useStore } from "@/store/store"
+import { sendDealWebhook } from "@/lib/webhook"
 
 // Type for search results based on the API response structure
 type CompanySearchResult = {
@@ -283,6 +284,12 @@ export default function NewDealPage() {
       const dealData = await dealRes.json()
       if (!dealData.success) {
         throw new Error("La API de Pipedrive no devolvió éxito al crear el trato")
+      }
+
+      // Send webhook notification after successful deal creation
+      const profitCenterName = profitCenters.find(center => center.id === Number(formData.profitCenter))?.label || ""
+      if (dealData.data?.id && profitCenterName) {
+        await sendDealWebhook(profitCenterName, dealData.data.id)
       }
       if (selectedContactId && formData.position) {
         const patchPayload = {
