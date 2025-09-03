@@ -16,6 +16,8 @@ import { LoadingSuccess } from "@/components/loading-success"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useStore } from "@/store/store"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { sendDealWebhook } from "@/lib/webhook"
+import { PROFIT_CENTER_FIELD_ID, getProfitCenterName } from "@/lib/profit-center"
 
 export default function RequestProposalPage() {
   const router = useRouter()
@@ -193,6 +195,96 @@ export default function RequestProposalPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updateBody),
         })
+      }
+
+      // --- SEND WEBHOOK AFTER PROPOSAL REQUEST ---
+      if (formData.dealId) {
+        try {
+          console.log("Fetching deal details for webhook...")
+          // Get full deal details to extract profit center
+          const dealResponse = await fetch(`/api/pipedrive/get-deal?id=${formData.dealId}`)
+          console.log("Deal response status:", dealResponse.status)
+          
+          if (dealResponse.ok) {
+            const dealData = await dealResponse.json()
+            console.log("Deal data received:", dealData)
+            
+            if (dealData.success && dealData.data) {
+              console.log("Full deal data:", dealData.data)
+              console.log("Custom fields:", dealData.data.custom_fields)
+              console.log("Deal title:", dealData.data.title)
+              console.log("Owner ID:", dealData.data.owner_id)
+              console.log("Organization ID:", dealData.data.org_id)
+              console.log("Looking for field:", PROFIT_CENTER_FIELD_ID)
+              const profitCenterIds = dealData.data.custom_fields?.[PROFIT_CENTER_FIELD_ID]
+              console.log("Profit center IDs:", profitCenterIds)
+              console.log("Profit center IDs type:", typeof profitCenterIds)
+              console.log("Profit center IDs is array:", Array.isArray(profitCenterIds))
+              
+              // Fetch owner and organization data
+              let ownerName = "Unknown"
+              let companyName = "Unknown"
+              
+              try {
+                if (dealData.data.owner_id) {
+                  const ownerResponse = await fetch(`/api/pipedrive/get-user?id=${dealData.data.owner_id}`)
+                  if (ownerResponse.ok) {
+                    const ownerData = await ownerResponse.json()
+                    if (ownerData.success && ownerData.data) {
+                      ownerName = ownerData.data.name
+                      console.log("Owner name:", ownerName)
+                    }
+                  }
+                }
+                
+                if (dealData.data.org_id) {
+                  const orgResponse = await fetch(`/api/pipedrive/get-organization?id=${dealData.data.org_id}`)
+                  if (orgResponse.ok) {
+                    const orgData = await orgResponse.json()
+                    if (orgData.success && orgData.data) {
+                      companyName = orgData.data.name
+                      console.log("Company name:", companyName)
+                    }
+                  }
+                }
+              } catch (fetchError) {
+                console.error("Error fetching owner or organization data:", fetchError)
+              }
+              
+              if (profitCenterIds && profitCenterIds.length > 0) {
+                const firstId = profitCenterIds[0]
+                console.log("First profit center ID:", firstId, "Type:", typeof firstId)
+                const profitCenterName = getProfitCenterName(firstId)
+                console.log("Found profit center name:", profitCenterName)
+                
+                if (profitCenterName && profitCenterName !== "General") {
+                  console.log("Sending webhook with profit center:", profitCenterName)
+                  const webhookResult = await sendDealWebhook(profitCenterName, parseInt(formData.dealId), dealData.data.title, ownerName, companyName)
+                  console.log("Webhook result:", webhookResult)
+                } else {
+                  console.warn("Profit center name is 'General' or empty, ID was:", firstId)
+                  // Send webhook with default profit center or skip
+                  console.log("Sending webhook with default profit center...")
+                  const webhookResult = await sendDealWebhook("General", parseInt(formData.dealId), dealData.data.title, ownerName, companyName)
+                  console.log("Webhook result:", webhookResult)
+                }
+              } else {
+                console.warn("No profit center IDs found in deal data")
+                console.log("Available fields in deal data:", Object.keys(dealData.data))
+                // Send webhook with default profit center or skip
+                console.log("Sending webhook with default profit center...")
+                const webhookResult = await sendDealWebhook("General", parseInt(formData.dealId), dealData.data.title, ownerName, companyName)
+                console.log("Webhook result:", webhookResult)
+              }
+            } else {
+              console.error("Deal data structure unexpected:", dealData)
+            }
+          } else {
+            console.error("Failed to fetch deal details:", dealResponse.statusText)
+          }
+        } catch (webhookError) {
+          console.error("Error in webhook process:", webhookError)
+        }
       }
 
       setIsSuccess(true)

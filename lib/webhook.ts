@@ -1,9 +1,12 @@
-export async function sendDealWebhook(profitCenterName: string, dealId: number) {
+export async function sendDealWebhook(profitCenterName: string, dealId: number, dealTitle: string, ownerName: string, companyName: string) {
   try {
     const webhookUrl = "https://n8n-fastmvp-u38739.vm.elestio.app/webhook/send_email"
     const payload = {
       profit_center: profitCenterName,
-      deal_url: `brinca.pipedrive.com/deal/${dealId}`
+      deal_url: `brinca.pipedrive.com/deal/${dealId}`,
+      deal_title: dealTitle,
+      owner_name: ownerName,
+      company_name: companyName
     }
 
     const response = await fetch(webhookUrl, {

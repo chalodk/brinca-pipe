@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ProtectedRoute } from "@/components/protected-route"
 import { LoadingSuccess } from "@/components/loading-success"
 import { useStore } from "@/store/store"
-import { sendDealWebhook } from "@/lib/webhook"
+import { PROFIT_CENTER_FIELD_ID, PROFIT_CENTERS } from "@/lib/profit-center"
 
 // Type for search results based on the API response structure
 type CompanySearchResult = {
@@ -270,7 +270,7 @@ export default function NewDealPage() {
         person_id: selectedContactId,
         channel: formData.source ? Number(formData.source) : undefined,
         custom_fields: {
-          "87b9669f62217dd75a5b8258da696fc3f76a9488": formData.profitCenter ? [Number(formData.profitCenter)] : [],
+          [PROFIT_CENTER_FIELD_ID]: formData.profitCenter ? [Number(formData.profitCenter)] : [],
         },
       }
       const dealRes = await fetch("/api/pipedrive/create-deal", {
@@ -286,11 +286,6 @@ export default function NewDealPage() {
         throw new Error("La API de Pipedrive no devolvió éxito al crear el trato")
       }
 
-      // Send webhook notification after successful deal creation
-      const profitCenterName = profitCenters.find(center => center.id === Number(formData.profitCenter))?.label || ""
-      if (dealData.data?.id && profitCenterName) {
-        await sendDealWebhook(profitCenterName, dealData.data.id)
-      }
       if (selectedContactId && formData.position) {
         const patchPayload = {
           custom_fields: {
@@ -320,14 +315,7 @@ export default function NewDealPage() {
   }
 
   // Profit centers with id and label
-  const profitCenters = [
-    { id: 9, label: "Estrategia, Innovación y Cultura" },
-    { id: 11, label: "Gestión Tecnológica e I+D" },
-    { id: 12, label: "Sostenibilidad" },
-    { id: 272, label: "Productividad e IA" },
-    { id: 10, label: "Innk" },
-    { id: 44, label: "Upskill" },
-  ]
+  const profitCenters = PROFIT_CENTERS
 
   return (
     <ProtectedRoute>
